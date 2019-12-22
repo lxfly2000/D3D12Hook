@@ -119,7 +119,8 @@ public:
 				// Enable additional debug layers.
 				dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
 				d3d11DeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
-				d2dFactoryOptions.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
+				//开启后D2D会在程序关闭时报内存泄露，暂不清楚如何处理…
+				//d2dFactoryOptions.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
 			}
 		}
 #endif
@@ -333,14 +334,15 @@ struct SCV
 		pPresent = other.pPresent;
 		other.pPresent = nullptr;
 	}
-	~SCV()
+	//这里会卡住，不知道为啥
+	/*~SCV()
 	{
 		if (pPresent)
 		{
 			delete pPresent;
 			pPresent = nullptr;
 		}
-	}
+	}*/
 };
 static std::map<IDXGISwapChain*, ID3D12Device*> s_d;
 static std::map<ID3D12CommandQueue*, ID3D12Device*> c_d;
