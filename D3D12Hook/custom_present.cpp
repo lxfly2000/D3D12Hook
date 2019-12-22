@@ -174,7 +174,8 @@ public:
 				// ReleaseWrappedResources() is called on the 11On12 device, the resource 
 				// will be transitioned to the PRESENT state.
 				D3D11_RESOURCE_FLAGS d3d11Flags = { D3D11_BIND_RENDER_TARGET };
-				C(m_d3d11On12Device->CreateWrappedResource(m_renderTargets[n].Get(),&d3d11Flags,D3D12_RESOURCE_STATE_RENDER_TARGET,
+				//根据微软的代码示例，此处的输入状态应该是D3D12_RESOURCE_STATE_RENDER_TARGET，但现在是在Present函数前进行的，暂时无法推测具体状态
+				C(m_d3d11On12Device->CreateWrappedResource(m_renderTargets[n].Get(),&d3d11Flags, D3D12_RESOURCE_STATE_COMMON,
 					D3D12_RESOURCE_STATE_PRESENT,IID_PPV_ARGS(&m_wrappedBackBuffers[n])));
 
 				// Create a render target for D2D to draw directly to this back buffer.
@@ -371,7 +372,7 @@ void CustomPresent(IDXGISwapChain* pSC)
 	{
 		if (scv.pPresent)
 			scv.pPresent->Draw();
-		else
+		else if(s_d[pSC]==c_d[scv.pCQ])
 			scv.NewPresent();
 	}
 }
@@ -390,7 +391,7 @@ void CustomExecuteCommandLists(ID3D12CommandQueue*pCQ)
 	{
 		if (scv.pPresent)
 			scv.pPresent->ExecuteExtraCommandList();
-		else
+		else if(s_d[scv.pSC]==c_d[pCQ])
 			scv.NewPresent();
 	}
 }
