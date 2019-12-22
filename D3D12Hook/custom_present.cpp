@@ -128,7 +128,7 @@ public:
 		ID3D12Device* pD3D12Device;
 		C(pSC->GetDevice(IID_PPV_ARGS(&pD3D12Device)));
 		ComPtr<ID3D11Device> d3d11Device;
-		C(D3D11On12CreateDevice(pD3D12Device, d3d11DeviceFlags,nullptr,0,reinterpret_cast<IUnknown**>(&pSC),1,0,&d3d11Device,&m_d3d11DeviceContext,nullptr));
+		C(D3D11On12CreateDevice(pD3D12Device, d3d11DeviceFlags,nullptr,0,reinterpret_cast<IUnknown**>(&pCQ),1,0,&d3d11Device,&m_d3d11DeviceContext,nullptr));
 		C(d3d11Device.As(&m_d3d11On12Device));
 
 		ComPtr<ID2D1Factory3> d2dFactory;
@@ -139,7 +139,7 @@ public:
 		D2D1_DEVICE_CONTEXT_OPTIONS deviceOptions = D2D1_DEVICE_CONTEXT_OPTIONS_NONE;
 		C(m_d2dDevice->CreateDeviceContext(deviceOptions, &m_d2dDeviceContext));
 		// Query the desktop's dpi settings, which will be used to create
-	// D2D's render targets.
+		// D2D's render targets.
 		float dpiX;
 		float dpiY;
 		d2dFactory->GetDesktopDpi(&dpiX, &dpiY);
@@ -371,7 +371,7 @@ void CustomPresent(IDXGISwapChain* pSC)
 	{
 		if (scv.pPresent)
 			scv.pPresent->Draw();
-		else if (s_d[pSC] == c_d[scv.pCQ])
+		else
 			scv.NewPresent();
 	}
 }
@@ -390,7 +390,7 @@ void CustomExecuteCommandLists(ID3D12CommandQueue*pCQ)
 	{
 		if (scv.pPresent)
 			scv.pPresent->ExecuteExtraCommandList();
-		else if (s_d[scv.pSC] == c_d[pCQ])
+		else
 			scv.NewPresent();
 	}
 }
