@@ -12,4 +12,4 @@ Hooks for:
 * D3D9: [D3D9Hook](https://github.com/lxfly2000/D3D9Hook)
 * D3D11: [D3D11Hook](https://github.com/lxfly2000/D3D11Hook)
 * OpenGL: [GLHook](https://github.com/lxfly2000/GLHook)
-* Vulkan: *Although I would like to make one, there is no such project in the future, my passion has gone!*
+* Vulkan: *Although I would like to do one, there is no such project in the future, my passion has gone!*
