@@ -120,7 +120,7 @@ public:
 				dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
 				d3d11DeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 				//开启后D2D会在程序关闭时报内存泄露，暂不清楚如何处理…
-				//d2dFactoryOptions.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
+				d2dFactoryOptions.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
 			}
 		}
 #endif
