@@ -71,7 +71,7 @@ BEGIN
             VALUE "FileDescription", "Direct3D 12 Hook File"
             VALUE "FileVersion", "0.0.0.2"
             VALUE "InternalName", "D3D12Hook.dll"
-            VALUE "LegalCopyright", "Copyright (C) 2019 lxfly2000, GitHub Repository: https://github.com/lxfly2000/D3D12Hook"
+            VALUE "LegalCopyright", "Copyright (C) 2019бл2020 lxfly2000, GitHub Repository: https://github.com/lxfly2000/D3D12Hook"
             VALUE "OriginalFilename", "D3D12Hook.dll"
             VALUE "ProductName", "Direct3D 12 Hook"
             VALUE "ProductVersion", "0.0.0.1"
