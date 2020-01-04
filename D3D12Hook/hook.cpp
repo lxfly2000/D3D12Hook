@@ -11,8 +11,10 @@ using namespace Microsoft::WRL;
 
 typedef HRESULT(__stdcall* PFIDXGISwapChain_Present)(IDXGISwapChain*, UINT, UINT);
 typedef void(__stdcall* PFID3D12CommandQueue_ExecuteCommandLists)(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*);
+typedef HRESULT(__stdcall* PFIDXGISwapChain_ResizeBuffers)(IDXGISwapChain*, UINT, UINT, UINT, DXGI_FORMAT, UINT);
 static PFIDXGISwapChain_Present pfPresent = nullptr, pfOriginalPresent = nullptr;
 static PFID3D12CommandQueue_ExecuteCommandLists pfExecuteCommandLists = nullptr, pfOriginalExecuteCommandLists = nullptr;
+static PFIDXGISwapChain_ResizeBuffers pfResizeBuffers = nullptr, pfOriginalResizeBuffers = nullptr;
 static HMODULE hDllModule;
 
 DWORD GetDLLPath(LPTSTR path, DWORD max_length)
@@ -36,7 +38,13 @@ void __stdcall HookedID3D12CommandQueue_ExecuteCommandLists(ID3D12CommandQueue* 
 	return pfOriginalExecuteCommandLists(pCQ, numLists, ppLists);
 }
 
-BOOL GetPresentVAddr(PFIDXGISwapChain_Present*pfOutPresent,PFID3D12CommandQueue_ExecuteCommandLists*pfOutExecute)
+HRESULT __stdcall HookedIDXGISwapChain_ResizeBuffers(IDXGISwapChain* p, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags)
+{
+	CustomResizeBuffers(p, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+	return pfOriginalResizeBuffers(p, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+}
+
+BOOL GetPresentVAddr(PFIDXGISwapChain_Present*pfOutPresent,PFID3D12CommandQueue_ExecuteCommandLists*pfOutExecute, PFIDXGISwapChain_ResizeBuffers* pfOutResizeBuffers)
 {
 	ComPtr<IDXGIFactory5>dxgiFactory;
 	UINT dxgiFlags = 0;
@@ -115,6 +123,7 @@ BOOL GetPresentVAddr(PFIDXGISwapChain_Present*pfOutPresent,PFID3D12CommandQueue_
 	//因为相同类的虚函数是共用的，所以只需创建一个该类的对象，通过指针就能获取到函数地址
 	//Present在VTable[8]的位置
 	*pfOutPresent = reinterpret_cast<PFIDXGISwapChain_Present>(reinterpret_cast<INT_PTR*>(reinterpret_cast<INT_PTR*>(pSC)[0])[8]);
+	*pfOutResizeBuffers = reinterpret_cast<PFIDXGISwapChain_ResizeBuffers>(reinterpret_cast<INT_PTR*>(reinterpret_cast<INT_PTR*>(pSC)[0])[13]);
 	DestroyWindow(hTemp);
 	pSC->Release();
 	pCQ->Release();
@@ -124,7 +133,7 @@ BOOL GetPresentVAddr(PFIDXGISwapChain_Present*pfOutPresent,PFID3D12CommandQueue_
 //导出以方便在没有DllMain时调用
 extern "C" __declspec(dllexport) BOOL StartHook()
 {
-	if (!GetPresentVAddr(&pfPresent,&pfExecuteCommandLists))
+	if (!GetPresentVAddr(&pfPresent,&pfExecuteCommandLists,&pfResizeBuffers))
 		return FALSE;
 	if (MH_Initialize() != MH_OK)
 		return FALSE;
@@ -132,9 +141,13 @@ extern "C" __declspec(dllexport) BOOL StartHook()
 		return FALSE;
 	if (MH_CreateHook(pfExecuteCommandLists, HookedID3D12CommandQueue_ExecuteCommandLists, reinterpret_cast<void**>(&pfOriginalExecuteCommandLists)) != MH_OK)
 		return FALSE;
+	if (MH_CreateHook(pfResizeBuffers, HookedIDXGISwapChain_ResizeBuffers, reinterpret_cast<void**>(&pfOriginalResizeBuffers)) != MH_OK)
+		return FALSE;
 	if (MH_EnableHook(pfPresent) != MH_OK)
 		return FALSE;
 	if (MH_EnableHook(pfExecuteCommandLists) != MH_OK)
+		return FALSE;
+	if (MH_EnableHook(pfResizeBuffers) != MH_OK)
 		return FALSE;
 	return TRUE;
 }
@@ -142,7 +155,15 @@ extern "C" __declspec(dllexport) BOOL StartHook()
 //导出以方便在没有DllMain时调用
 extern "C" __declspec(dllexport) BOOL StopHook()
 {
+	if (MH_DisableHook(pfResizeBuffers) != MH_OK)
+		return FALSE;
+	if (MH_DisableHook(pfExecuteCommandLists) != MH_OK)
+		return FALSE;
 	if (MH_DisableHook(pfPresent) != MH_OK)
+		return FALSE;
+	if (MH_RemoveHook(pfResizeBuffers) != MH_OK)
+		return FALSE;
+	if (MH_RemoveHook(pfExecuteCommandLists) != MH_OK)
 		return FALSE;
 	if (MH_RemoveHook(pfPresent) != MH_OK)
 		return FALSE;

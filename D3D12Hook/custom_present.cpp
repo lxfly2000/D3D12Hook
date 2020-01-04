@@ -40,9 +40,9 @@ private:
 	unsigned t1, t2, fcount;
 	std::wstring display_text;
 	int current_fps;
-	TCHAR time_text[32], fps_text[32];
+	TCHAR time_text[32], fps_text[32], width_text[32], height_text[32];
 
-	TCHAR font_name[256], font_size[16], text_x[16], text_y[16], text_align[16], text_valign[16], display_text_fmt[256], fps_fmt[32], time_fmt[32];
+	TCHAR font_name[256], font_size[16], text_x[16], text_y[16], text_align[16], text_valign[16], display_text_fmt[256], fps_fmt[32], time_fmt[32], width_fmt[32], height_fmt[32];
 	TCHAR font_red[16], font_green[16], font_blue[16], font_alpha[16];
 	TCHAR font_shadow_red[16], font_shadow_green[16], font_shadow_blue[16], font_shadow_alpha[16], font_shadow_distance[16];
 	int font_weight, period_frames;
@@ -64,6 +64,7 @@ private:
 	UINT m_frameIndex;
 
 	IDXGISwapChain3* m_swapChain;
+	DXGI_SWAP_CHAIN_DESC sc_desc;
 public:
 	D2DCustomPresent() :t1(0), t2(0), fcount(0),m_frameIndex(0)
 	{
@@ -100,6 +101,8 @@ public:
 		GetInitConfInt(period_frames, 60);
 		GetInitConfStr(time_fmt, TEXT("%H:%M:%S"));
 		GetInitConfStr(fps_fmt, TEXT("FPS:%3d"));
+		GetInitConfStr(width_fmt, TEXT("%d"));
+		GetInitConfStr(height_fmt, TEXT("%d"));
 		GetInitConfStr(display_text_fmt, TEXT("{fps}"));
 
 		//https://docs.microsoft.com/zh-cn/windows/win32/direct3d12/d2d-using-d3d11on12
@@ -143,11 +146,10 @@ public:
 		// D2D's render targets.
 		float dpiX;
 		float dpiY;
-		d2dFactory->GetDesktopDpi(&dpiX, &dpiY);
+		C(pSC->GetDesc(&sc_desc));
+		dpiX = dpiY = (float)GetDpiForWindow(sc_desc.OutputWindow);
 		D2D1_BITMAP_PROPERTIES1 bitmapProperties = D2D1::BitmapProperties1(D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
 			D2D1::PixelFormat(DXGI_FORMAT_UNKNOWN, D2D1_ALPHA_MODE_PREMULTIPLIED),dpiX,dpiY);
-		DXGI_SWAP_CHAIN_DESC sc_desc;
-		C(pSC->GetDesc(&sc_desc));
 		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc{};
 		rtvHeapDesc.NumDescriptors = sc_desc.BufferCount;
 		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
@@ -190,6 +192,13 @@ public:
 			}
 		}
 		C(CreateDWTextFormat(textFormat, font_name, (DWRITE_FONT_WEIGHT)font_weight, F(font_size)));
+		CalcTextPos();
+		C(m_d2dDeviceContext->CreateSolidColorBrush(D2D1::ColorF(F(font_shadow_red),F(font_shadow_green),F(font_shadow_blue),F(font_shadow_alpha)), &calcShadowColor));
+		C(m_d2dDeviceContext->CreateSolidColorBrush(D2D1::ColorF(F(font_red),F(font_green),F(font_blue),F(font_alpha)), &calcColor));
+		return TRUE;
+	}
+	void CalcTextPos()
+	{
 		float fWidth = (float)sc_desc.BufferDesc.Width, fHeight = (float)sc_desc.BufferDesc.Height;
 
 		if (lstrcmpi(text_align, TEXT("right")) == 0)
@@ -248,9 +257,15 @@ public:
 		rTextShadow.top = rText.top + F(font_shadow_distance);
 		rTextShadow.right = rText.right + F(font_shadow_distance);
 		rTextShadow.bottom = rText.bottom + F(font_shadow_distance);
-		C(m_d2dDeviceContext->CreateSolidColorBrush(D2D1::ColorF(F(font_shadow_red),F(font_shadow_green),F(font_shadow_blue),F(font_shadow_alpha)), &calcShadowColor));
-		C(m_d2dDeviceContext->CreateSolidColorBrush(D2D1::ColorF(F(font_red),F(font_green),F(font_blue),F(font_alpha)), &calcColor));
-		return TRUE;
+	}
+	void CalcRect(IDXGISwapChain* pSC, UINT BufferCount, UINT width, UINT height, DXGI_FORMAT NewFormat, UINT SwapChainFlags)
+	{
+		sc_desc.BufferCount = BufferCount;
+		sc_desc.BufferDesc.Width = width;
+		sc_desc.BufferDesc.Height = height;
+		sc_desc.BufferDesc.Format = NewFormat;
+		sc_desc.Flags = SwapChainFlags;
+		CalcTextPos();
 	}
 	void Uninit()
 	{
@@ -270,6 +285,8 @@ public:
 			tm tm1;
 			localtime_s(&tm1, &t1);
 			wcsftime(time_text, ARRAYSIZE(time_text), time_fmt, &tm1);
+			wsprintf(width_text, width_fmt, sc_desc.BufferDesc.Width);
+			wsprintf(height_text, height_fmt, sc_desc.BufferDesc.Height);
 			display_text = display_text_fmt;
 			size_t pos = display_text.find(TEXT("\\n"));
 			if (pos != std::wstring::npos)
@@ -280,6 +297,12 @@ public:
 			pos = display_text.find(TEXT("{time}"));
 			if (pos != std::wstring::npos)
 				display_text.replace(pos, 6, time_text);
+			pos = display_text.find(TEXT("{width}"));
+			if (pos != std::wstring::npos)
+				display_text.replace(pos, 7, width_text);
+			pos = display_text.find(TEXT("{height}"));
+			if (pos != std::wstring::npos)
+				display_text.replace(pos, 8, height_text);
 		}
 		m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 		// Acquire our wrapped render target resource for the current back buffer.
@@ -396,4 +419,16 @@ void CustomExecuteCommandLists(ID3D12CommandQueue*pCQ)
 		else if(s_d[scv.pSC]==c_d[pCQ])
 			scv.NewPresent();
 	}
+}
+
+void CustomResizeBuffers(IDXGISwapChain* p, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags)
+{
+	if (s_d.find(p) == s_d.end())
+		return;
+	ID3D12Device* d = s_d[p];
+	if (d_sc.find(d) == d_sc.end())
+		return;
+	D2DCustomPresent* pp = d_sc[d].pPresent;
+	if(pp)
+		pp->CalcRect(p, BufferCount, Width, Height, NewFormat, SwapChainFlags);
 }
