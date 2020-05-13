@@ -29,8 +29,8 @@ HRESULT CreateDWTextFormat(ComPtr<IDWriteTextFormat> & textformat,
 {
 	ComPtr<IDWriteFactory> dwfactory;
 	C(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(dwfactory), (IUnknown**)&dwfactory));
-	C(dwfactory->CreateTextFormat(fontName, NULL, fontWeight, fontStyle, fontExpand, fontSize, localeName,
-		textformat.ReleaseAndGetAddressOf()));
+	C(dwfactory->CreateTextFormat(fontName, NULL, fontWeight, fontStyle, fontExpand,
+		fontSize*USER_DEFAULT_SCREEN_DPI/72, localeName, textformat.ReleaseAndGetAddressOf()));
 	return S_OK;
 }
 
